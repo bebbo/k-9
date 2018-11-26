@@ -51,7 +51,9 @@ import com.fsck.k9.mailstore.StorageManager;
 import com.fsck.k9.service.MailService;
 import com.fsck.k9.ui.dialog.AutocryptPreferEncryptDialog;
 import com.fsck.k9.ui.dialog.AutocryptPreferEncryptDialog.OnPreferEncryptChangedListener;
+
 import org.openintents.openpgp.util.OpenPgpKeyPreference;
+
 import timber.log.Timber;
 
 
@@ -122,6 +124,8 @@ public class AccountSettings extends K9PreferenceActivity {
     private static final String PREFERENCE_CLOUD_SEARCH_ENABLED = "remote_search_enabled";
     private static final String PREFERENCE_REMOTE_SEARCH_NUM_RESULTS = "account_remote_search_num_results";
     private static final String PREFERENCE_REMOTE_SEARCH_FULL_TEXT = "account_remote_search_full_text";
+    private static final String PREFERENCE_RESIZE_ENABLED = "resize_enabled";
+    private static final String PREFERENCE_RESIZE_FACTOR = "account_attachment_resize_factor";
 
     private static final String PREFERENCE_LOCAL_STORAGE_PROVIDER = "local_storage_provider";
     private static final String PREFERENCE_CATEGORY_FOLDERS = "folders";
@@ -190,6 +194,8 @@ public class AccountSettings extends K9PreferenceActivity {
     private PreferenceScreen searchScreen;
     private CheckBoxPreference cloudSearchEnabled;
     private ListPreference remoteSearchNumResults;
+    private CheckBoxPreference resizeEnabled;
+    private ListPreference resizeFactor;
 
     /*
      * Temporarily removed because search results aren't displayed to the user.
@@ -433,7 +439,6 @@ public class AccountSettings extends K9PreferenceActivity {
         });
 
 
-
         messageAge = (ListPreference) findPreference(PREFERENCE_MESSAGE_AGE);
 
         if (!account.isSearchByDateCapable()) {
@@ -468,7 +473,7 @@ public class AccountSettings extends K9PreferenceActivity {
 
         accountDefault = (CheckBoxPreference) findPreference(PREFERENCE_DEFAULT);
         accountDefault.setChecked(
-            account.equals(Preferences.getPreferences(this).getDefaultAccount()));
+                account.equals(Preferences.getPreferences(this).getDefaultAccount()));
 
         accountShowPictures = (ListPreference) findPreference(PREFERENCE_SHOW_PICTURES);
         accountShowPictures.setValue("" + account.getShowPictures());
@@ -516,13 +521,51 @@ public class AccountSettings extends K9PreferenceActivity {
         cloudSearchEnabled = (CheckBoxPreference) findPreference(PREFERENCE_CLOUD_SEARCH_ENABLED);
         remoteSearchNumResults = (ListPreference) findPreference(PREFERENCE_REMOTE_SEARCH_NUM_RESULTS);
         remoteSearchNumResults.setOnPreferenceChangeListener(
-            new OnPreferenceChangeListener() {
-                public boolean onPreferenceChange(Preference pref, Object newVal) {
-                    updateRemoteSearchLimit((String)newVal);
-                    return true;
+                new OnPreferenceChangeListener() {
+                    public boolean onPreferenceChange(Preference pref, Object newVal) {
+                        updateRemoteSearchLimit((String) newVal);
+                        return true;
+                    }
                 }
-            }
         );
+
+        resizeEnabled = (CheckBoxPreference) findPreference(PREFERENCE_RESIZE_ENABLED);
+        resizeFactor = (ListPreference) findPreference(PREFERENCE_RESIZE_FACTOR);
+        resizeEnabled.setChecked(account.getImageResizeEnabled());
+
+        int rFactor = account.getResizeFactor();
+        if (rFactor == Account.RESIZE_FACTOR_ORIGINAL_SIZE_SELECTED) {
+            resizeFactor.setValueIndex(0);
+        } else if (rFactor == Account.RESIZE_FACTOR_HALF_SIZE_SELECTED) {
+            resizeFactor.setValueIndex(1);
+        } else {
+            resizeFactor.setValueIndex(2);
+        }
+        updateResizeFactor(account.getResizeFactor());
+
+        resizeFactor.setOnPreferenceChangeListener(new OnPreferenceChangeListener() {
+            @Override
+            public boolean onPreferenceChange(Preference preference, Object newValue) {
+                final String value = newValue.toString();
+                int index = resizeFactor.findIndexOfValue(value);
+                switch (index) {
+                    case Account.RESIZE_FACTOR_ORIGINAL_SIZE_SELECTED: {
+                        updateResizeFactor(1);
+                        break;
+                    }
+                    case Account.RESIZE_FACTOR_HALF_SIZE_SELECTED: {
+                        updateResizeFactor(2);
+                        break;
+                    }
+                    case Account.RESIZE_FACTOR_ONE_FOURTH_SIZE_SELECTED: {
+                        updateResizeFactor(4);
+                        break;
+                    }
+                }
+                return true;
+            }
+        });
+
         //mRemoteSearchFullText = (CheckBoxPreference) findPreference(PREFERENCE_REMOTE_SEARCH_FULL_TEXT);
 
         pushPollOnConnect = (CheckBoxPreference) findPreference(PREFERENCE_PUSH_POLL_ON_CONNECT);
@@ -668,37 +711,37 @@ public class AccountSettings extends K9PreferenceActivity {
         });
 
         findPreference(PREFERENCE_COMPOSITION).setOnPreferenceClickListener(
-        new Preference.OnPreferenceClickListener() {
-            public boolean onPreferenceClick(Preference preference) {
-                onCompositionSettings();
-                return true;
-            }
-        });
+                new Preference.OnPreferenceClickListener() {
+                    public boolean onPreferenceClick(Preference preference) {
+                        onCompositionSettings();
+                        return true;
+                    }
+                });
 
         findPreference(PREFERENCE_MANAGE_IDENTITIES).setOnPreferenceClickListener(
-        new Preference.OnPreferenceClickListener() {
-            public boolean onPreferenceClick(Preference preference) {
-                onManageIdentities();
-                return true;
-            }
-        });
+                new Preference.OnPreferenceClickListener() {
+                    public boolean onPreferenceClick(Preference preference) {
+                        onManageIdentities();
+                        return true;
+                    }
+                });
 
         findPreference(PREFERENCE_INCOMING).setOnPreferenceClickListener(
-        new Preference.OnPreferenceClickListener() {
-            public boolean onPreferenceClick(Preference preference) {
-                incomingChanged = true;
-                onIncomingSettings();
-                return true;
-            }
-        });
+                new Preference.OnPreferenceClickListener() {
+                    public boolean onPreferenceClick(Preference preference) {
+                        incomingChanged = true;
+                        onIncomingSettings();
+                        return true;
+                    }
+                });
 
         findPreference(PREFERENCE_OUTGOING).setOnPreferenceClickListener(
-        new Preference.OnPreferenceClickListener() {
-            public boolean onPreferenceClick(Preference preference) {
-                onOutgoingSettings();
-                return true;
-            }
-        });
+                new Preference.OnPreferenceClickListener() {
+                    public boolean onPreferenceClick(Preference preference) {
+                        onOutgoingSettings();
+                        return true;
+                    }
+                });
 
         hasPgpCrypto = K9.isOpenPgpProviderConfigured();
         PreferenceScreen cryptoMenu = (PreferenceScreen) findPreference(PREFERENCE_CRYPTO);
@@ -833,6 +876,8 @@ public class AccountSettings extends K9PreferenceActivity {
             //account.setRemoteSearchFullText(mRemoteSearchFullText.isChecked());
         }
 
+        account.setResizeEnabled(resizeEnabled.isChecked());
+
         boolean needsRefresh = account.setAutomaticCheckIntervalMinutes(Integer.parseInt(checkFrequency.getValue()));
         needsRefresh |= account.setFolderSyncMode(FolderMode.valueOf(syncMode.getValue()));
 
@@ -878,9 +923,9 @@ public class AccountSettings extends K9PreferenceActivity {
         }
         if (resultCode == RESULT_OK) {
             switch (requestCode) {
-            case SELECT_AUTO_EXPAND_FOLDER:
-                autoExpandFolder.setSummary(translateFolder(data.getStringExtra(ChooseFolder.EXTRA_NEW_FOLDER)));
-                break;
+                case SELECT_AUTO_EXPAND_FOLDER:
+                    autoExpandFolder.setSummary(translateFolder(data.getStringExtra(ChooseFolder.EXTRA_NEW_FOLDER)));
+                    break;
             }
         }
         super.onActivityResult(requestCode, resultCode, data);
@@ -1006,14 +1051,15 @@ public class AccountSettings extends K9PreferenceActivity {
 
     private void doVibrateTest(Preference preference) {
         // Do the vibration to show the user what it's like.
-        Vibrator vibrate = (Vibrator)preference.getContext().getSystemService(Context.VIBRATOR_SERVICE);
+        Vibrator vibrate = (Vibrator) preference.getContext().getSystemService(Context.VIBRATOR_SERVICE);
         vibrate.vibrate(NotificationSetting.getVibration(
-                            Integer.parseInt(accountVibratePattern.getValue()),
-                            Integer.parseInt(accountVibrateTimes.getValue())), -1);
+                Integer.parseInt(accountVibratePattern.getValue()),
+                Integer.parseInt(accountVibrateTimes.getValue())), -1);
     }
 
     /**
      * Remote search result limit summary contains the current limit.  On load or change, update this value.
+     *
      * @param maxResults Search limit to update the summary with.
      */
     private void updateRemoteSearchLimit(String maxResults) {
@@ -1027,8 +1073,17 @@ public class AccountSettings extends K9PreferenceActivity {
         }
     }
 
+    private void updateResizeFactor(int factor) {
+        account.setResizeFactor(factor);
+        if (factor != 1) {
+            resizeFactor.setSummary(String.format(getString(R.string.account_settings_attachment_resize_factor_summary), String.valueOf(factor)));
+        } else {
+            resizeFactor.setSummary(getString(R.string.account_settings_attachment_resize_factor_summary_default));
+        }
+    }
+
     private class PopulateFolderPrefsTask extends AsyncTask<Void, Void, Void> {
-        List <? extends Folder > folders = new LinkedList<>();
+        List<? extends Folder> folders = new LinkedList<>();
         String[] allFolderValues;
         String[] allFolderLabels;
 
@@ -1042,7 +1097,7 @@ public class AccountSettings extends K9PreferenceActivity {
 
             // TODO: In the future the call above should be changed to only return remote folders.
             // For now we just remove the Outbox folder if present.
-            Iterator <? extends Folder > iter = folders.iterator();
+            Iterator<? extends Folder> iter = folders.iterator();
             while (iter.hasNext()) {
                 Folder folder = iter.next();
                 if (account.getOutboxFolderName().equals(folder.getName())) {

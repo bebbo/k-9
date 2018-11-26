@@ -3,24 +3,34 @@ package com.fsck.k9.helper;
 
 import android.content.Context;
 import android.database.Cursor;
+import android.graphics.Bitmap;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.ContactsContract;
+import android.provider.MediaStore;
 import android.text.Editable;
 import android.text.TextUtils;
+
 import timber.log.Timber;
+
 import android.widget.EditText;
 import android.widget.TextView;
 
 import com.fsck.k9.ui.ContactBadge;
 import com.fsck.k9.mail.Address;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.james.mime4j.util.MimeUtil;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -34,7 +44,7 @@ public class Utility {
     // repetition matching as we might want to strip ML tags. Ex:
     // Re: [foo] Re: RE : [foo] blah blah blah
     private static final Pattern RESPONSE_PATTERN = Pattern.compile(
-                "((Re|Fw|Fwd|Aw|R\\u00E9f\\.)(\\[\\d+\\])?[\\u00A0 ]?: *)+", Pattern.CASE_INSENSITIVE);
+            "((Re|Fw|Fwd|Aw|R\\u00E9f\\.)(\\[\\d+\\])?[\\u00A0 ]?: *)+", Pattern.CASE_INSENSITIVE);
 
     /**
      * Mailing-list tag pattern to match strings like "[foobar] "
@@ -43,6 +53,12 @@ public class Utility {
             Pattern.CASE_INSENSITIVE);
 
     private static Handler sMainThreadHandler;
+
+    /**
+     * The path of the temporary directory that is used to store resized image attachments.
+     * The directory is cleaned as soon as message is sent.
+     */
+    private static final String RESIZED_ATTACHMENTS_TEMPORARY_DIRECTORY = "/tempAttachments/";
 
     public static boolean arrayContains(Object[] a, Object o) {
         for (Object element : a) {
@@ -116,7 +132,7 @@ public class Utility {
         if (view.getText() != null) {
             String s = view.getText().toString();
             if (s.matches("^([a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?\\.)*[a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?$") &&
-                s.length() <= 253) {
+                    s.length() <= 253) {
                 return true;
             }
             if (s.matches("^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$")) {
@@ -152,21 +168,21 @@ public class Utility {
      * WordUtils.wrap(null, *) = null
      * WordUtils.wrap("", *) = ""
      * </pre>
-     *
+     * <p>
      * Adapted from the Apache Commons Lang library.
      * http://svn.apache.org/viewvc/commons/proper/lang
-     *   /trunk/src/main/java/org/apache/commons/lang3/text/WordUtils.java
+     * /trunk/src/main/java/org/apache/commons/lang3/text/WordUtils.java
      * SVN Revision 925967, Mon Mar 22 06:16:49 2010 UTC
-     *
+     * <p>
      * Licensed to the Apache Software Foundation (ASF) under one or more
      * contributor license agreements.  See the NOTICE file distributed with
      * this work for additional information regarding copyright ownership.
      * The ASF licenses this file to You under the Apache License, Version 2.0
      * (the "License"); you may not use this file except in compliance with
      * the License.  You may obtain a copy of the License at
-     *
-     *      http://www.apache.org/licenses/LICENSE-2.0
-     *
+     * <p>
+     * http://www.apache.org/licenses/LICENSE-2.0
+     * <p>
      * Unless required by applicable law or agreed to in writing, software
      * distributed under the License is distributed on an "AS IS" BASIS,
      * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -178,6 +194,7 @@ public class Utility {
      * @return a line with newlines inserted, <code>null</code> if null input
      */
     private static final String NEWLINE_REGEX = "(?:\\r?\\n)";
+
     public static String wrap(String str, int wrapLength) {
         StringBuilder result = new StringBuilder();
         for (String piece : str.split(NEWLINE_REGEX)) {
@@ -197,32 +214,32 @@ public class Utility {
      * WordUtils.wrap(null, *, *, *) = null
      * WordUtils.wrap("", *, *, *) = ""
      * </pre>
-     *
+     * <p>
      * This is from the Apache Commons Lang library.
      * http://svn.apache.org/viewvc/commons/proper/lang
-     *   /trunk/src/main/java/org/apache/commons/lang3/text/WordUtils.java
+     * /trunk/src/main/java/org/apache/commons/lang3/text/WordUtils.java
      * SVN Revision 925967, Mon Mar 22 06:16:49 2010 UTC
-     *
+     * <p>
      * Licensed to the Apache Software Foundation (ASF) under one or more
      * contributor license agreements.  See the NOTICE file distributed with
      * this work for additional information regarding copyright ownership.
      * The ASF licenses this file to You under the Apache License, Version 2.0
      * (the "License"); you may not use this file except in compliance with
      * the License.  You may obtain a copy of the License at
-     *
-     *      http://www.apache.org/licenses/LICENSE-2.0
-     *
+     * <p>
+     * http://www.apache.org/licenses/LICENSE-2.0
+     * <p>
      * Unless required by applicable law or agreed to in writing, software
      * distributed under the License is distributed on an "AS IS" BASIS,
      * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
      * See the License for the specific language governing permissions and
      * limitations under the License.
      *
-     * @param str  the String to be word wrapped, may be null
-     * @param wrapLength  the column to wrap the words at, less than 1 is treated as 1
-     * @param newLineStr  the string to insert for a new line,
-     *  <code>null</code> uses the system property line separator
-     * @param wrapLongWords  true if long words (such as URLs) should be wrapped
+     * @param str           the String to be word wrapped, may be null
+     * @param wrapLength    the column to wrap the words at, less than 1 is treated as 1
+     * @param newLineStr    the string to insert for a new line,
+     *                      <code>null</code> uses the system property line separator
+     * @param wrapLongWords true if long words (such as URLs) should be wrapped
      * @return a line with newlines inserted, <code>null</code> if null input
      */
     public static String wrap(String str, int wrapLength, String newLineStr, boolean wrapLongWords) {
@@ -288,8 +305,7 @@ public class Utility {
      * Result is also trimmed.
      * </p>
      *
-     * @param subject
-     *            Never <code>null</code>.
+     * @param subject Never <code>null</code>.
      * @return Never <code>null</code>.
      */
     public static String stripSubject(final String subject) {
@@ -325,7 +341,7 @@ public class Utility {
                 && matcher.find(lastPrefix)
                 && matcher.start() == lastPrefix
                 && (!tagPresent || tag == null || subject.regionMatches(matcher.end(), tag, 0,
-                        tag.length()))) {
+                tag.length()))) {
             lastPrefix = matcher.end();
 
             if (tagPresent) {
@@ -368,9 +384,11 @@ public class Utility {
 
     private static final String IMG_SRC_REGEX = "(?is:<img[^>]+src\\s*=\\s*['\"]?([a-z]+)\\:)";
     private static final Pattern IMG_PATTERN = Pattern.compile(IMG_SRC_REGEX);
+
     /**
      * Figure out if this part has images.
      * TODO: should only return true if we're an html part
+     *
      * @param message Content to evaluate
      * @return True if it has external images; false otherwise.
      */
@@ -405,7 +423,7 @@ public class Utility {
      */
     public static boolean hasConnectivity(final Context context) {
         final ConnectivityManager connectivityManager =
-            (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+                (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
         if (connectivityManager == null) {
             return false;
         }
@@ -419,17 +437,17 @@ public class Utility {
 
     private static final Pattern MESSAGE_ID = Pattern.compile("<" +
             "(?:" +
-                "[a-zA-Z0-9!#$%&'*+\\-/=?^_`{|}~]+" +
-                "(?:\\.[a-zA-Z0-9!#$%&'*+\\-/=?^_`{|}~]+)*" +
-                "|" +
-                "\"(?:[^\\\\\"]|\\\\.)*\"" +
+            "[a-zA-Z0-9!#$%&'*+\\-/=?^_`{|}~]+" +
+            "(?:\\.[a-zA-Z0-9!#$%&'*+\\-/=?^_`{|}~]+)*" +
+            "|" +
+            "\"(?:[^\\\\\"]|\\\\.)*\"" +
             ")" +
             "@" +
             "(?:" +
-                "[a-zA-Z0-9!#$%&'*+\\-/=?^_`{|}~]+" +
-                "(?:\\.[a-zA-Z0-9!#$%&'*+\\-/=?^_`{|}~]+)*" +
-                "|" +
-                "\\[(?:[^\\\\\\]]|\\\\.)*\\]" +
+            "[a-zA-Z0-9!#$%&'*+\\-/=?^_`{|}~]+" +
+            "(?:\\.[a-zA-Z0-9!#$%&'*+\\-/=?^_`{|}~]+)*" +
+            "|" +
+            "\\[(?:[^\\\\\\]]|\\\\.)*\\]" +
             ")" +
             ">");
 
@@ -457,6 +475,47 @@ public class Utility {
         return null;
     }
 
+    public static String getResizedImageFile(Context context, Uri uri, float multiplier) {
+        File cacheDir = context.getCacheDir();
+        File tempAttachmentsDirectory = new File(cacheDir.getPath() + RESIZED_ATTACHMENTS_TEMPORARY_DIRECTORY);
+        tempAttachmentsDirectory.mkdirs();
+
+        File tempFile = null;
+        Bitmap bitmap = null;
+        Bitmap resized = null;
+        FileOutputStream out = null;
+        try {
+            tempFile = File.createTempFile("TempResizedAttachment", null, tempAttachmentsDirectory);
+            bitmap = MediaStore.Images.Media.getBitmap(context.getContentResolver(), uri);
+            resized = Bitmap.createScaledBitmap(bitmap, (int) (bitmap.getWidth() * multiplier), (int) (bitmap.getHeight() * multiplier), true);
+            out = new FileOutputStream(tempFile);
+            resized.compress(Bitmap.CompressFormat.PNG, 100, out);
+        } catch (IOException e) {
+            Timber.e(e, "Error while resizing image attachment");
+            return "";
+        } finally {
+            IOUtils.closeQuietly(out);
+        }
+
+        return tempFile.getAbsolutePath();
+    }
+
+    public static void clearTemporaryAttachmentsCache(Context context) {
+        File cacheDir = context.getCacheDir();
+        File tempAttachmentsDirectory = new File(cacheDir.getPath() + RESIZED_ATTACHMENTS_TEMPORARY_DIRECTORY);
+        if (tempAttachmentsDirectory.exists()) {
+            try {
+                FileUtils.cleanDirectory(tempAttachmentsDirectory);
+            } catch (IOException e) {
+                Timber.e(e, "Error occurred while cleaning temporary directory for resized attachments");
+            }
+        }
+    }
+
+    public static boolean isImage(Context context, Uri uri) {
+        return context.getContentResolver().getType(uri).contains("image");
+    }
+
     /**
      * @return a {@link Handler} tied to the main thread.
      */
@@ -471,12 +530,12 @@ public class Utility {
 
     /**
      * Assign the contact to the badge.
-     *
+     * <p>
      * On 4.3, we pass the address name as extra info so that if the contact doesn't exist
      * the name is auto-populated.
      *
      * @param contactBadge the badge to the set the contact for
-     * @param address the address to look for a contact for.
+     * @param address      the address to look for a contact for.
      */
     public static void setContactForBadge(ContactBadge contactBadge,
                                           Address address) {

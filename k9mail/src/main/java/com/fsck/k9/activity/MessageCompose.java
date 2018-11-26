@@ -2,6 +2,7 @@ package com.fsck.k9.activity;
 
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -15,6 +16,7 @@ import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
 import android.app.Dialog;
 import android.app.PendingIntent;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -100,7 +102,9 @@ import com.fsck.k9.search.LocalSearch;
 import com.fsck.k9.ui.EolConvertingEditText;
 import com.fsck.k9.ui.compose.QuotedMessageMvpView;
 import com.fsck.k9.ui.compose.QuotedMessagePresenter;
+
 import org.openintents.openpgp.util.OpenPgpApi;
+
 import timber.log.Timber;
 
 
@@ -115,6 +119,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
     private static final int DIALOG_CONFIRM_DISCARD_ON_BACK = 2;
     private static final int DIALOG_CHOOSE_IDENTITY = 3;
     private static final int DIALOG_CONFIRM_DISCARD = 4;
+    private static final int DIALOG_CHOOSE_RESIZE_VALUE = 5;
 
     private static final long INVALID_DRAFT_ID = MessagingController.INVALID_MESSAGE_ID;
 
@@ -157,7 +162,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
 
     /**
      * Regular expression to remove the first localized "Re:" prefix in subjects.
-     *
+     * <p>
      * Currently:
      * - "Aw:" (german: abbreviation for "Antwort")
      */
@@ -168,6 +173,8 @@ public class MessageCompose extends K9Activity implements OnClickListener,
     private AttachmentPresenter attachmentPresenter;
 
     private Contacts contacts;
+
+    private int resizeDialogSelectedFactor = 1;
 
     /**
      * The account used for message composition.
@@ -234,7 +241,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
             ContextThemeWrapper themeContext = new ContextThemeWrapper(this,
                     K9.getK9ThemeResourceId(K9.getK9ComposerTheme()));
             @SuppressLint("InflateParams") // this is the top level activity element, it has no root
-            View v = LayoutInflater.from(themeContext).inflate(R.layout.message_compose, null);
+                    View v = LayoutInflater.from(themeContext).inflate(R.layout.message_compose, null);
             TypedValue outValue = new TypedValue();
             // background color needs to be forced
             themeContext.getTheme().resolveAttribute(R.attr.messageViewBackgroundColor, outValue, true);
@@ -297,7 +304,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
 
         QuotedMessageMvpView quotedMessageMvpView = new QuotedMessageMvpView(this);
         quotedMessagePresenter = new QuotedMessagePresenter(this, quotedMessageMvpView, account);
-        attachmentPresenter = new AttachmentPresenter(getApplicationContext(), attachmentMvpView, getLoaderManager(), this);
+        attachmentPresenter = new AttachmentPresenter(getApplicationContext(), attachmentMvpView, account, getLoaderManager(), this);
 
         messageContentView = (EolConvertingEditText) findViewById(R.id.message_content);
         messageContentView.getInputExtras(true).putBoolean("allowEmoji", true);
@@ -469,18 +476,16 @@ public class MessageCompose extends K9Activity implements OnClickListener,
      * <p>
      * Supported external intents:
      * <ul>
-     *   <li>{@link Intent#ACTION_VIEW}</li>
-     *   <li>{@link Intent#ACTION_SENDTO}</li>
-     *   <li>{@link Intent#ACTION_SEND}</li>
-     *   <li>{@link Intent#ACTION_SEND_MULTIPLE}</li>
+     * <li>{@link Intent#ACTION_VIEW}</li>
+     * <li>{@link Intent#ACTION_SENDTO}</li>
+     * <li>{@link Intent#ACTION_SEND}</li>
+     * <li>{@link Intent#ACTION_SEND_MULTIPLE}</li>
      * </ul>
      * </p>
      *
-     * @param intent
-     *         The (external) intent that started the activity.
-     *
+     * @param intent The (external) intent that started the activity.
      * @return {@code true}, if this activity was started by an external intent. {@code false},
-     *         otherwise.
+     * otherwise.
      */
     private boolean initFromIntent(final Intent intent) {
         boolean startedByExternalIntent = false;
@@ -649,8 +654,16 @@ public class MessageCompose extends K9Activity implements OnClickListener,
     }
 
     @Nullable
-    private MessageBuilder createMessageBuilder(boolean isDraft) {
+    private MessageBuilder createMessageBuilder(boolean isDraft, ArrayList<Attachment> attachments) {
         MessageBuilder builder;
+
+        /*
+        ProgressDialog progressDialog = new ProgressDialog(this);
+        progressDialog.setMessage("Resizing Image Attachments");
+        progressDialog.setIndeterminate(true);
+        progressDialog.setCancelable(false);
+        progressDialog.show();
+        */
 
         ComposeCryptoStatus cryptoStatus = recipientPresenter.getCurrentCachedCryptoStatus();
         if (cryptoStatus == null) {
@@ -682,7 +695,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
                 .setIdentity(identity)
                 .setMessageFormat(currentMessageFormat)
                 .setText(messageContentView.getCharacters())
-                .setAttachments(attachmentPresenter.createAttachmentList())
+                .setAttachments(attachments)
                 .setSignature(signatureView.getCharacters())
                 .setSignatureBeforeQuotedText(account.isSignatureBeforeQuotedText())
                 .setIdentityChanged(identityChanged)
@@ -726,7 +739,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
         }
 
         finishAfterDraftSaved = true;
-        performSaveAfterChecks();
+        performSaveAfterChecksWithoutResizing();
     }
 
     private void checkToSaveDraftImplicitly() {
@@ -739,23 +752,72 @@ public class MessageCompose extends K9Activity implements OnClickListener,
         }
 
         finishAfterDraftSaved = false;
-        performSaveAfterChecks();
+        performSaveAfterChecksWithoutResizing();
     }
 
-    private void performSaveAfterChecks() {
-        currentMessageBuilder = createMessageBuilder(true);
+    private void performSaveAfterChecksWithoutResizing() {
+        currentMessageBuilder = createMessageBuilder(true, attachmentPresenter.createAttachmentListWithoutResizing());
         if (currentMessageBuilder != null) {
             setProgressBarIndeterminateVisibility(true);
             currentMessageBuilder.buildAsync(this);
         }
     }
 
-    public void performSendAfterChecks() {
-        currentMessageBuilder = createMessageBuilder(false);
+    private void performSaveAfterChecks() {
+        ResizeImageAttachments resizeImageAttachments = new ResizeImageAttachments();
+        resizeImageAttachments.execute(true);
+    }
+
+    public void performSendAfterChecksWithoutResizing() {
+        currentMessageBuilder = createMessageBuilder(false, attachmentPresenter.createAttachmentListWithoutResizing());
         if (currentMessageBuilder != null) {
             changesMadeSinceLastSave = false;
             setProgressBarIndeterminateVisibility(true);
             currentMessageBuilder.buildAsync(this);
+        }
+    }
+
+    public void performSendAfterChecks() {
+        ResizeImageAttachments resizeImageAttachments = new ResizeImageAttachments();
+        resizeImageAttachments.execute(false);
+    }
+
+    public class ResizeImageAttachments extends AsyncTask<Boolean, Void, ArrayList<Attachment>> {
+        ProgressDialog progressDialog;
+        boolean isDraft = false;
+
+        @Override
+        protected void onPreExecute() {
+            progressDialog = new ProgressDialog(MessageCompose.this);
+            progressDialog.setIndeterminate(true);
+            progressDialog.setCancelable(false);
+            progressDialog.setMessage("Resizing image attachments");
+            progressDialog.show();
+        }
+
+        @Override
+        protected ArrayList<Attachment> doInBackground(Boolean... params) {
+            isDraft = params[0];
+            return attachmentPresenter.createAttachmentList();
+        }
+
+        @Override
+        protected void onPostExecute(ArrayList<Attachment> attachments) {
+            progressDialog.dismiss();
+            if (isDraft) {
+                currentMessageBuilder = createMessageBuilder(true, attachments);
+                if (currentMessageBuilder != null) {
+                    setProgressBarIndeterminateVisibility(true);
+                    currentMessageBuilder.buildAsync(MessageCompose.this);
+                }
+            } else {
+                currentMessageBuilder = createMessageBuilder(false, attachments);
+                if (currentMessageBuilder != null) {
+                    changesMadeSinceLastSave = false;
+                    setProgressBarIndeterminateVisibility(true);
+                    currentMessageBuilder.buildAsync(MessageCompose.this);
+                }
+            }
         }
     }
 
@@ -1074,7 +1136,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
         if (messageContentView.getText().length() != 0) {
             return true;
         }
-        if (!attachmentPresenter.createAttachmentList().isEmpty()) {
+        if (!attachmentPresenter.createAttachmentListWithoutResizing().isEmpty()) {
             return true;
         }
         if (subjectView.getText().length() != 0) {
@@ -1175,6 +1237,49 @@ public class MessageCompose extends K9Activity implements OnClickListener,
         return super.onCreateDialog(id);
     }
 
+    public void showResizeFactorDialog(final Attachment attachment) {
+        final CharSequence[] resizeOptions = {
+                getString(R.string.account_settings_attachments_resize_factor_entry_original),
+                getString(R.string.account_settings_attachments_resize_factor_entry_half),
+                getString(R.string.account_settings_attachments_resize_factor_entry_one_fourth)};
+
+        int selectedChoice = Account.RESIZE_FACTOR_NONE_SELECTED;
+        if (attachment.overrideDefault) {
+            if (attachment.resizeFactor == 1.0f) {
+                selectedChoice = Account.RESIZE_FACTOR_ORIGINAL_SIZE_SELECTED;
+            } else if (attachment.resizeFactor == 0.5f) {
+                selectedChoice = Account.RESIZE_FACTOR_HALF_SIZE_SELECTED;
+            } else {
+                selectedChoice = Account.RESIZE_FACTOR_ONE_FOURTH_SIZE_SELECTED;
+            }
+        }
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this)
+                .setTitle(getString(R.string.account_settings_attachment_resize_factor_label))
+                .setSingleChoiceItems(resizeOptions, selectedChoice, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        Account.ResizeFactor factor = Account.ResizeFactor.values()[which];
+                        switch (factor) {
+                            case FULL_SIZE:
+                                attachment.updateResizeInfo(1.0f, true);
+                                attachmentPresenter.updateAttachmentsList(attachment);
+                                break;
+                            case HALF_SIZE:
+                                attachment.updateResizeInfo(0.5f, true);
+                                attachmentPresenter.updateAttachmentsList(attachment);
+                                break;
+                            case QUARTER_SIZE:
+                                attachment.updateResizeInfo(0.25f, true);
+                                attachmentPresenter.updateAttachmentsList(attachment);
+                                break;
+                        }
+                        dialog.dismiss();
+                    }
+                });
+        builder.create().show();
+    }
+
     public void saveDraftEventually() {
         changesMadeSinceLastSave = true;
     }
@@ -1191,8 +1296,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
      * Pull out the parts of the now loaded source message and apply them to the new message
      * depending on the type of message being composed.
      *
-     * @param messageViewInfo
-     *         The source message used to populate the various text fields.
+     * @param messageViewInfo The source message used to populate the various text fields.
      */
     private void processSourceMessage(MessageViewInfo messageViewInfo) {
         try {
@@ -1402,7 +1506,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
         final MessageReference messageReference;
 
         SendMessageTask(Context context, Account account, Contacts contacts, Message message,
-                Long draftId, MessageReference messageReference) {
+                        Long draftId, MessageReference messageReference) {
             this.context = context;
             this.account = account;
             this.contacts = contacts;
@@ -1431,6 +1535,12 @@ public class MessageCompose extends K9Activity implements OnClickListener,
             return null;
         }
 
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            super.onPostExecute(aVoid);
+            Utility.clearTemporaryAttachmentsCache(context);
+        }
+
         /**
          * Set the flag on the referenced message(indicated we replied / forwarded the message)
          **/
@@ -1455,8 +1565,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
      * When we are launched with an intent that includes a mailto: URI, we can actually
      * gather quite a few of our message fields from it.
      *
-     * @param mailTo
-     *         The MailTo object we use to initialize message field
+     * @param mailTo The MailTo object we use to initialize message field
      */
     private void initializeFromMailto(MailTo mailTo) {
         recipientPresenter.initFromMailto(mailTo);
@@ -1623,7 +1732,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
 
         @Override
         public void startIntentSenderForMessageLoaderHelper(IntentSender si, int requestCode, Intent fillIntent,
-                int flagsMask, int flagValues, int extraFlags) {
+                                                            int flagsMask, int flagValues, int extraFlags) {
             try {
                 requestCode |= REQUEST_MASK_LOADER_HELPER;
                 startIntentSenderForResult(si, requestCode, fillIntent, flagsMask, flagValues, extraFlags);
@@ -1744,6 +1853,17 @@ public class MessageCompose extends K9Activity implements OnClickListener,
                 }
             });
 
+            View resizeButton = view.findViewById(R.id.attachment_resize);
+            if (!Utility.isImage(MessageCompose.this, attachment.uri)) {
+                resizeButton.setVisibility(View.GONE);
+            }
+            resizeButton.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    showResizeFactorDialog(attachment);
+                }
+            });
+
             updateAttachmentView(attachment);
             attachmentsView.addView(view);
         }
@@ -1777,12 +1897,12 @@ public class MessageCompose extends K9Activity implements OnClickListener,
 
         @Override
         public void performSendAfterChecks() {
-            MessageCompose.this.performSendAfterChecks();
+            MessageCompose.this.performSendAfterChecksWithoutResizing();
         }
 
         @Override
         public void performSaveAfterChecks() {
-            MessageCompose.this.performSaveAfterChecks();
+            MessageCompose.this.performSendAfterChecksWithoutResizing();
         }
 
         @Override

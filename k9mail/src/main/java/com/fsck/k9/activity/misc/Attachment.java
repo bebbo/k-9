@@ -6,13 +6,13 @@ import android.os.Parcelable;
 
 /**
  * Container class for information about an attachment.
- *
+ * <p>
  * This is used by {@link com.fsck.k9.activity.MessageCompose} to fetch and manage attachments.
  */
 public class Attachment implements Parcelable {
     /**
      * The URI pointing to the source of the attachment.
-     *
+     * <p>
      * In most cases this will be a {@code content://}-URI.
      */
     public final Uri uri;
@@ -29,7 +29,7 @@ public class Attachment implements Parcelable {
 
     /**
      * The content type of the attachment.
-     *
+     * <p>
      * Valid iff {@link #state} is {@link LoadingState#METADATA} or {@link LoadingState#COMPLETE}.
      */
     public final String contentType;
@@ -41,24 +41,39 @@ public class Attachment implements Parcelable {
 
     /**
      * The (file)name of the attachment.
-     *
+     * <p>
      * Valid iff {@link #state} is {@link LoadingState#METADATA} or {@link LoadingState#COMPLETE}.
      */
     public final String name;
 
     /**
      * The size of the attachment.
-     *
+     * <p>
      * Valid iff {@link #state} is {@link LoadingState#METADATA} or {@link LoadingState#COMPLETE}.
      */
     public final Long size;
 
     /**
      * The name of the temporary file containing the local copy of the attachment.
-     *
+     * <p>
      * Valid iff {@link #state} is {@link LoadingState#COMPLETE}.
      */
     public final String filename;
+
+    /**
+     * +     * The resized factor.
+     * +     *
+     * +     * Valid iff {@link #state} is {@link LoadingState#COMPLETE}.
+     * +
+     */
+    public float resizeFactor = 1.0f;
+
+    /**
+     * Stores whether default resized settings need to be overridden.
+     * <p>
+     * Valid iff {@link #state} is {@link LoadingState#COMPLETE}.
+     */
+    public boolean overrideDefault = false;
 
     public enum LoadingState {
         URI_ONLY,
@@ -68,7 +83,7 @@ public class Attachment implements Parcelable {
     }
 
     private Attachment(Uri uri, LoadingState state, int loaderId, String contentType, boolean allowMessageType,
-            String name, Long size, String filename) {
+                       String name, Long size, String filename) {
         this.uri = uri;
         this.state = state;
         this.loaderId = loaderId;
@@ -123,6 +138,11 @@ public class Attachment implements Parcelable {
                 size, absolutePath);
     }
 
+    public void updateResizeInfo(float resizeFactor, boolean overrideDefault) {
+        this.resizeFactor = resizeFactor;
+        this.overrideDefault = overrideDefault;
+    }
+
     // === Parcelable ===
 
     @Override
@@ -149,14 +169,18 @@ public class Attachment implements Parcelable {
 
     public static final Parcelable.Creator<Attachment> CREATOR =
             new Parcelable.Creator<Attachment>() {
-        @Override
-        public Attachment createFromParcel(Parcel in) {
-            return new Attachment(in);
-        }
+                @Override
+                public Attachment createFromParcel(Parcel in) {
+                    return new Attachment(in);
+                }
 
-        @Override
-        public Attachment[] newArray(int size) {
-            return new Attachment[size];
-        }
-    };
+                @Override
+                public Attachment[] newArray(int size) {
+                    return new Attachment[size];
+                }
+            };
+
+    public Attachment createResizedCopy(String newFilename, long newSize) {
+        return new Attachment(uri, LoadingState.COMPLETE, loaderId, contentType, allowMessageType, name, newSize, newFilename);
+    }
 }
