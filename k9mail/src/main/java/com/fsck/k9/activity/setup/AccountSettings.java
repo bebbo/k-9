@@ -125,7 +125,8 @@ public class AccountSettings extends K9PreferenceActivity {
     private static final String PREFERENCE_REMOTE_SEARCH_NUM_RESULTS = "account_remote_search_num_results";
     private static final String PREFERENCE_REMOTE_SEARCH_FULL_TEXT = "account_remote_search_full_text";
     private static final String PREFERENCE_RESIZE_ENABLED = "resize_enabled";
-    private static final String PREFERENCE_RESIZE_FACTOR = "account_attachment_resize_factor";
+    private static final String PREFERENCE_RESIZE_CIRCUMFERENCE = "account_attachment_resize_circumference";
+    private static final String PREFERENCE_RESIZE_QUALITY = "account_attachment_resize_quality";
 
     private static final String PREFERENCE_LOCAL_STORAGE_PROVIDER = "local_storage_provider";
     private static final String PREFERENCE_CATEGORY_FOLDERS = "folders";
@@ -195,7 +196,8 @@ public class AccountSettings extends K9PreferenceActivity {
     private CheckBoxPreference cloudSearchEnabled;
     private ListPreference remoteSearchNumResults;
     private CheckBoxPreference resizeEnabled;
-    private ListPreference resizeFactor;
+    private EditTextPreference resizeCircumference;
+    private EditTextPreference resizeQuality;
 
     /*
      * Temporarily removed because search results aren't displayed to the user.
@@ -530,41 +532,59 @@ public class AccountSettings extends K9PreferenceActivity {
         );
 
         resizeEnabled = (CheckBoxPreference) findPreference(PREFERENCE_RESIZE_ENABLED);
-        resizeFactor = (ListPreference) findPreference(PREFERENCE_RESIZE_FACTOR);
+        resizeCircumference = (EditTextPreference) findPreference(PREFERENCE_RESIZE_CIRCUMFERENCE);
+        resizeQuality = (EditTextPreference) findPreference(PREFERENCE_RESIZE_QUALITY);
+
         resizeEnabled.setChecked(account.getImageResizeEnabled());
 
-        int rFactor = account.getResizeFactor();
-        if (rFactor == Account.RESIZE_FACTOR_ORIGINAL_SIZE_SELECTED) {
-            resizeFactor.setValueIndex(0);
-        } else if (rFactor == Account.RESIZE_FACTOR_HALF_SIZE_SELECTED) {
-            resizeFactor.setValueIndex(1);
-        } else {
-            resizeFactor.setValueIndex(2);
-        }
-        updateResizeFactor(account.getResizeFactor());
-
-        resizeFactor.setOnPreferenceChangeListener(new OnPreferenceChangeListener() {
+        resizeCircumference.setSummary(Integer.toString(account.getImageResizeCircumference()));
+        resizeCircumference.setText(Integer.toString(account.getImageResizeCircumference()));
+        resizeCircumference.setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
             @Override
             public boolean onPreferenceChange(Preference preference, Object newValue) {
                 final String value = newValue.toString();
-                int index = resizeFactor.findIndexOfValue(value);
-                switch (index) {
-                    case Account.RESIZE_FACTOR_ORIGINAL_SIZE_SELECTED: {
-                        updateResizeFactor(1);
-                        break;
-                    }
-                    case Account.RESIZE_FACTOR_HALF_SIZE_SELECTED: {
-                        updateResizeFactor(2);
-                        break;
-                    }
-                    case Account.RESIZE_FACTOR_ONE_FOURTH_SIZE_SELECTED: {
-                        updateResizeFactor(4);
-                        break;
-                    }
+                int resizeCircumference = Account.DEFAULT_RESIZE_CIRCUMFERENCE;
+                try {
+                    resizeCircumference = Integer.parseInt(value);
+                    if (resizeCircumference < 520)
+                        resizeCircumference = 520;
+                } catch (Exception ex) {
+                    // ignore
                 }
-                return true;
+                account.setImageResizeCircumference(resizeCircumference);
+
+                AccountSettings.this.resizeCircumference.setSummary(Integer.toString(account.getImageResizeCircumference()));
+                AccountSettings.this.resizeCircumference.setText(Integer.toString(account.getImageResizeCircumference()));
+                return false;
             }
         });
+
+        resizeQuality.setSummary(Integer.toString(account.getImageResizeQuality()));
+        resizeQuality.setText(Integer.toString(account.getImageResizeQuality()));
+        resizeQuality.setOnPreferenceChangeListener(new Preference.OnPreferenceChangeListener() {
+            @Override
+            public boolean onPreferenceChange(Preference preference, Object newValue) {
+                final String value = newValue.toString();
+                int resizeQuality = Account.DEFAULT_RESIZE_QUALITY;
+                try {
+                    resizeQuality = Integer.parseInt(value);
+                    if (resizeQuality < 10)
+                        resizeQuality = 10;
+                    else if (resizeQuality > 100)
+                        resizeQuality = 100;
+                } catch (Exception ex) {
+                    // ignore
+                }
+                account.setImageResizeQuality(resizeQuality);
+
+                AccountSettings.this.resizeQuality.setSummary(Integer.toString(account.getImageResizeQuality()));
+                AccountSettings.this.resizeQuality.setText(Integer.toString(account.getImageResizeQuality()));
+                return false;
+            }
+        });
+
+
+        updateResizeFactor(account.getImageResizeCircumference(), account.getImageResizeQuality());
 
         //mRemoteSearchFullText = (CheckBoxPreference) findPreference(PREFERENCE_REMOTE_SEARCH_FULL_TEXT);
 
@@ -876,7 +896,7 @@ public class AccountSettings extends K9PreferenceActivity {
             //account.setRemoteSearchFullText(mRemoteSearchFullText.isChecked());
         }
 
-        account.setResizeEnabled(resizeEnabled.isChecked());
+        account.setImageResizeEnabled(resizeEnabled.isChecked());
 
         boolean needsRefresh = account.setAutomaticCheckIntervalMinutes(Integer.parseInt(checkFrequency.getValue()));
         needsRefresh |= account.setFolderSyncMode(FolderMode.valueOf(syncMode.getValue()));
@@ -1073,13 +1093,9 @@ public class AccountSettings extends K9PreferenceActivity {
         }
     }
 
-    private void updateResizeFactor(int factor) {
-        account.setResizeFactor(factor);
-        if (factor != 1) {
-            resizeFactor.setSummary(String.format(getString(R.string.account_settings_attachment_resize_factor_summary), String.valueOf(factor)));
-        } else {
-            resizeFactor.setSummary(getString(R.string.account_settings_attachment_resize_factor_summary_default));
-        }
+    private void updateResizeFactor(int circumference, int quality) {
+        account.setImageResizeCircumference(circumference);
+        account.setImageResizeQuality(quality);
     }
 
     private class PopulateFolderPrefsTask extends AsyncTask<Void, Void, Void> {

@@ -475,7 +475,7 @@ public class Utility {
         return null;
     }
 
-    public static String getResizedImageFile(Context context, Uri uri, float multiplier) {
+    public static String getResizedImageFile(Context context, Uri uri, int circumference, int quality) {
         File cacheDir = context.getCacheDir();
         File tempAttachmentsDirectory = new File(cacheDir.getPath() + RESIZED_ATTACHMENTS_TEMPORARY_DIRECTORY);
         tempAttachmentsDirectory.mkdirs();
@@ -484,14 +484,25 @@ public class Utility {
         Bitmap bitmap = null;
         Bitmap resized = null;
         FileOutputStream out = null;
+
+        if (circumference < 520)
+            circumference = 520;
+
+        float factor = 0;
+
         try {
             tempFile = File.createTempFile("TempResizedAttachment", null, tempAttachmentsDirectory);
             bitmap = MediaStore.Images.Media.getBitmap(context.getContentResolver(), uri);
-            resized = Bitmap.createScaledBitmap(bitmap, (int) (bitmap.getWidth() * multiplier), (int) (bitmap.getHeight() * multiplier), true);
+
+            factor = (bitmap.getWidth() + bitmap.getHeight()) / circumference;
+            if (factor < 1.0f)
+                factor = 1.0f;
+
+            resized = Bitmap.createScaledBitmap(bitmap, (int) (bitmap.getWidth() / factor), (int) (bitmap.getHeight() / factor), true);
             out = new FileOutputStream(tempFile);
-            resized.compress(Bitmap.CompressFormat.PNG, 100, out);
-        } catch (IOException e) {
-            Timber.e(e, "Error while resizing image attachment");
+            resized.compress(Bitmap.CompressFormat.JPEG, quality, out);
+        } catch (IOException | OutOfMemoryError e) {
+            Timber.e(e, "Error while resizing image attachment: (" + bitmap.getWidth() + "," + bitmap.getHeight() + ") / " + factor);
             return "";
         } finally {
             IOUtils.closeQuietly(out);

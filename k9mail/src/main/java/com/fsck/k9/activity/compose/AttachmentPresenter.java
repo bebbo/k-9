@@ -127,28 +127,30 @@ public class AttachmentPresenter {
     public ArrayList<Attachment> createAttachmentList() {
         ArrayList<Attachment> result = new ArrayList<>();
         for (Attachment attachment : attachments.values()) {
+            int resizeCircumference;
+            int resizeQuality;
             if (account.getImageResizeEnabled() && !attachment.overrideDefault && Utility.isImage(context, attachment.uri)) {
-                float factor = 1.0f / account.getResizeFactor();
-                String newFilename = Utility.getResizedImageFile(context, attachment.uri, factor);
-                long size;
-                if (factor != 1.0f && !newFilename.equals("")) {
-                    size = (new File(newFilename)).length();
-                    Attachment newAttachment = attachment.createResizedCopy(newFilename, size);
-                    result.add(newAttachment);
-                } else {
-                    result.add(attachment);
-                }
+                resizeCircumference = account.getImageResizeCircumference();
+                resizeQuality = account.getImageResizeQuality();
             } else if (attachment.overrideDefault && Utility.isImage(context, attachment.uri)) {
-                float factor = attachment.resizeFactor;
-                String newFilename = Utility.getResizedImageFile(context, attachment.uri, factor);
-                long size;
-                if (factor != 1.0f && !newFilename.equals("")) {
-                    size = (new File(newFilename)).length();
-                    Attachment newAttachment = attachment.createResizedCopy(newFilename, size);
-                    result.add(newAttachment);
-                } else {
-                    result.add(attachment);
-                }
+                resizeCircumference = attachment.resizeCircumference;
+                resizeQuality = attachment.resizeQuality;
+            } else {
+                resizeCircumference = 0;
+                resizeQuality = 0;
+            }
+
+            String newFilename;
+            if (resizeCircumference != 0) {
+                newFilename = Utility.getResizedImageFile(context, attachment.uri, resizeCircumference, resizeQuality);
+            } else {
+                newFilename = "";
+            }
+
+            if (!newFilename.equals("")) {
+                long size = (new File(newFilename)).length();
+                Attachment newAttachment = attachment.createResizedCopy(newFilename, size);
+                result.add(newAttachment);
             } else {
                 result.add(attachment);
             }
@@ -408,7 +410,7 @@ public class AttachmentPresenter {
 
     public void updateAttachmentsList(Attachment attachment) {
         Attachment originalAttachment = attachments.get(attachment.uri);
-        originalAttachment.updateResizeInfo(attachment.resizeFactor, attachment.overrideDefault);
+        originalAttachment.updateResizeInfo(attachment.resizeCircumference, attachment.resizeQuality, attachment.overrideDefault);
     }
 
     public void onActivityResult(int resultCode, int requestCode, Intent data) {

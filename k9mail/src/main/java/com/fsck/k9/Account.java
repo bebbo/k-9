@@ -97,10 +97,6 @@ public class Account implements BaseAccount, StoreConfig {
         }
     }
 
-    public static enum ResizeFactor {
-        FULL_SIZE, HALF_SIZE, QUARTER_SIZE
-    }
-
     public static final MessageFormat DEFAULT_MESSAGE_FORMAT = MessageFormat.HTML;
     public static final boolean DEFAULT_MESSAGE_FORMAT_AUTO = false;
     public static final boolean DEFAULT_MESSAGE_READ_RECEIPT = false;
@@ -112,7 +108,8 @@ public class Account implements BaseAccount, StoreConfig {
     public static final int DEFAULT_REMOTE_SEARCH_NUM_RESULTS = 25;
 
     public static final boolean DEFAULT_RESIZE_ENABLED = false;
-    public static final int DEFAULT_RESIZE_FACTOR = 1;
+    public static final int DEFAULT_RESIZE_CIRCUMFERENCE = 2444;
+    public static final int DEFAULT_RESIZE_QUALITY = 90;
 
     public static final String ACCOUNT_DESCRIPTION_KEY = "description";
     public static final String STORE_URI_KEY = "storeUri";
@@ -121,11 +118,6 @@ public class Account implements BaseAccount, StoreConfig {
     public static final String IDENTITY_NAME_KEY = "name";
     public static final String IDENTITY_EMAIL_KEY = "email";
     public static final String IDENTITY_DESCRIPTION_KEY = "description";
-
-    public static final int RESIZE_FACTOR_NONE_SELECTED = -1;
-    public static final int RESIZE_FACTOR_ORIGINAL_SIZE_SELECTED = 0;
-    public static final int RESIZE_FACTOR_HALF_SIZE_SELECTED = 1;
-    public static final int RESIZE_FACTOR_ONE_FOURTH_SIZE_SELECTED = 2;
 
     /*
      * http://developer.android.com/design/style/color.html
@@ -240,7 +232,8 @@ public class Account implements BaseAccount, StoreConfig {
     private int remoteSearchNumResults;
 
     private boolean resizeEnabled;
-    private int resizeFactor;
+    private int resizeCircumference;
+    private int resizeQuality;
 
     private ColorChip unreadColorChip;
     private ColorChip readColorChip;
@@ -336,7 +329,8 @@ public class Account implements BaseAccount, StoreConfig {
         remoteSearchNumResults = DEFAULT_REMOTE_SEARCH_NUM_RESULTS;
         isEnabled = true;
         resizeEnabled = DEFAULT_RESIZE_ENABLED;
-        resizeFactor = DEFAULT_RESIZE_FACTOR;
+        resizeCircumference = DEFAULT_RESIZE_CIRCUMFERENCE;
+        resizeQuality = DEFAULT_RESIZE_QUALITY;
         markMessageAsReadOnView = true;
         alwaysShowCcBcc = false;
 
@@ -486,8 +480,9 @@ public class Account implements BaseAccount, StoreConfig {
         remoteSearchFullText = storage.getBoolean(accountUuid + ".remoteSearchFullText", false);
         remoteSearchNumResults = storage.getInt(accountUuid + ".remoteSearchNumResults", DEFAULT_REMOTE_SEARCH_NUM_RESULTS);
 
-        resizeEnabled = storage.getBoolean(accountUuid + ".resizeEnabled", false);
-        resizeFactor = storage.getInt(accountUuid + ".resizeFactor", DEFAULT_RESIZE_FACTOR);
+        resizeEnabled = storage.getBoolean(accountUuid + ".resizeEnabled", DEFAULT_RESIZE_ENABLED);
+        resizeCircumference = storage.getInt(accountUuid + ".resizeCircumference", DEFAULT_RESIZE_CIRCUMFERENCE);
+        resizeQuality = storage.getInt(accountUuid + ".resizeQuality", DEFAULT_RESIZE_QUALITY);
 
         isEnabled = storage.getBoolean(accountUuid + ".enabled", true);
         markMessageAsReadOnView = storage.getBoolean(accountUuid + ".markMessageAsReadOnView", true);
@@ -757,7 +752,8 @@ public class Account implements BaseAccount, StoreConfig {
         editor.putBoolean(accountUuid + ".remoteSearchFullText", remoteSearchFullText);
         editor.putInt(accountUuid + ".remoteSearchNumResults", remoteSearchNumResults);
         editor.putBoolean(accountUuid + ".resizeEnabled", resizeEnabled);
-        editor.putInt(accountUuid + ".resizeFactor", resizeFactor);
+        editor.putInt(accountUuid + ".resizeCircumference", resizeCircumference);
+        editor.putInt(accountUuid + ".resizeQuality", resizeQuality);
         editor.putBoolean(accountUuid + ".enabled", isEnabled);
         editor.putBoolean(accountUuid + ".markMessageAsReadOnView", markMessageAsReadOnView);
         editor.putBoolean(accountUuid + ".alwaysShowCcBcc", alwaysShowCcBcc);
@@ -1697,17 +1693,23 @@ public class Account implements BaseAccount, StoreConfig {
         return resizeEnabled;
     }
 
-    public void setResizeEnabled(boolean resizeEnabled) {
+    public void setImageResizeEnabled(boolean resizeEnabled) {
         this.resizeEnabled = resizeEnabled;
     }
 
-    public int getResizeFactor() {
-        return resizeFactor;
+    public int getImageResizeCircumference() {
+        return resizeCircumference;
     }
 
-    public void setResizeFactor(int resizeFactor) {
-        this.resizeFactor = resizeFactor;
+    public void setImageResizeCircumference(int resizeCircumference) {
+        this.resizeCircumference = resizeCircumference;
     }
+
+    public int getImageResizeQuality() {
+        return this.resizeQuality != 0 ? resizeQuality : DEFAULT_RESIZE_QUALITY;
+    }
+
+    public void setImageResizeQuality(int resizeQuality) { this.resizeQuality = resizeQuality; }
 
     public String getInboxFolderName() {
         return inboxFolderName;

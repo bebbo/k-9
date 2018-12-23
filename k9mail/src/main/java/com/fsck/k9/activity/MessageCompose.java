@@ -43,6 +43,7 @@ import android.view.View.OnFocusChangeListener;
 import android.view.Window;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.TableLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -119,7 +120,6 @@ public class MessageCompose extends K9Activity implements OnClickListener,
     private static final int DIALOG_CONFIRM_DISCARD_ON_BACK = 2;
     private static final int DIALOG_CHOOSE_IDENTITY = 3;
     private static final int DIALOG_CONFIRM_DISCARD = 4;
-    private static final int DIALOG_CHOOSE_RESIZE_VALUE = 5;
 
     private static final long INVALID_DRAFT_ID = MessagingController.INVALID_MESSAGE_ID;
 
@@ -173,8 +173,6 @@ public class MessageCompose extends K9Activity implements OnClickListener,
     private AttachmentPresenter attachmentPresenter;
 
     private Contacts contacts;
-
-    private int resizeDialogSelectedFactor = 1;
 
     /**
      * The account used for message composition.
@@ -763,11 +761,6 @@ public class MessageCompose extends K9Activity implements OnClickListener,
         }
     }
 
-    private void performSaveAfterChecks() {
-        ResizeImageAttachments resizeImageAttachments = new ResizeImageAttachments();
-        resizeImageAttachments.execute(true);
-    }
-
     public void performSendAfterChecksWithoutResizing() {
         currentMessageBuilder = createMessageBuilder(false, attachmentPresenter.createAttachmentListWithoutResizing());
         if (currentMessageBuilder != null) {
@@ -1238,42 +1231,65 @@ public class MessageCompose extends K9Activity implements OnClickListener,
     }
 
     public void showResizeFactorDialog(final Attachment attachment) {
-        final CharSequence[] resizeOptions = {
-                getString(R.string.account_settings_attachments_resize_factor_entry_original),
-                getString(R.string.account_settings_attachments_resize_factor_entry_half),
-                getString(R.string.account_settings_attachments_resize_factor_entry_one_fourth)};
 
-        int selectedChoice = Account.RESIZE_FACTOR_NONE_SELECTED;
+        final TextView caption1 = new TextView(this);
+        final TextView caption2 = new TextView(this);
+        caption1.setText(getString(R.string.account_settings_attachments_resize_circumference));
+        caption2.setText(getString(R.string.account_settings_attachments_resize_quality));
+
+        final EditText circumferenceText = new EditText(this);
+        final EditText qualityText = new EditText(this);
+        circumferenceText.setSingleLine();
+        qualityText.setSingleLine();
+
         if (attachment.overrideDefault) {
-            if (attachment.resizeFactor == 1.0f) {
-                selectedChoice = Account.RESIZE_FACTOR_ORIGINAL_SIZE_SELECTED;
-            } else if (attachment.resizeFactor == 0.5f) {
-                selectedChoice = Account.RESIZE_FACTOR_HALF_SIZE_SELECTED;
-            } else {
-                selectedChoice = Account.RESIZE_FACTOR_ONE_FOURTH_SIZE_SELECTED;
-            }
+            circumferenceText.setText(Integer.toString(attachment.resizeCircumference));
+            qualityText.setText(Integer.toString(attachment.resizeQuality));
+        } else {
+            circumferenceText.setText(Integer.toString(account.getImageResizeCircumference()));
+            qualityText.setText(Integer.toString(account.getImageResizeQuality()));
         }
+
+        final TableLayout tl = new TableLayout(this);
+        tl.addView(caption1);
+        tl.addView(circumferenceText);
+        tl.addView(caption2);
+        tl.addView(qualityText);
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this)
                 .setTitle(getString(R.string.account_settings_attachment_resize_factor_label))
-                .setSingleChoiceItems(resizeOptions, selectedChoice, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        Account.ResizeFactor factor = Account.ResizeFactor.values()[which];
-                        switch (factor) {
-                            case FULL_SIZE:
-                                attachment.updateResizeInfo(1.0f, true);
-                                attachmentPresenter.updateAttachmentsList(attachment);
-                                break;
-                            case HALF_SIZE:
-                                attachment.updateResizeInfo(0.5f, true);
-                                attachmentPresenter.updateAttachmentsList(attachment);
-                                break;
-                            case QUARTER_SIZE:
-                                attachment.updateResizeInfo(0.25f, true);
-                                attachmentPresenter.updateAttachmentsList(attachment);
-                                break;
+                .setView(tl)
+                .setPositiveButton(getString(R.string.ok), new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int whichButton) {
+
+                        int resizeCircumference = Account.DEFAULT_RESIZE_CIRCUMFERENCE;
+                        try {
+                            resizeCircumference = Integer.parseInt(circumferenceText.getText().toString());
+                            if (resizeCircumference < 520)
+                                resizeCircumference = 520;
+                        } catch (Exception ex){
+                            // ignore
                         }
+
+                        int resizeQuality = Account.DEFAULT_RESIZE_QUALITY;
+                        try {
+                            resizeQuality = Integer.parseInt(qualityText.getText().toString());
+                            if (resizeQuality < 10)
+                                resizeQuality = 10;
+                            else if (resizeQuality > 100)
+                                resizeQuality = 100;
+                        } catch (Exception ex){
+                            // ignore
+                        }
+
+                        attachment.updateResizeInfo(resizeCircumference, resizeQuality, true);
+                        attachmentPresenter.updateAttachmentsList(attachment);
+
+                        dialog.dismiss();
+                    }
+                })
+                .setNegativeButton(getString(R.string.cancel_action), new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int whichButton) {
                         dialog.dismiss();
                     }
                 });

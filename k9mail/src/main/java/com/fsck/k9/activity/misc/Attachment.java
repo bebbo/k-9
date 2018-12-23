@@ -4,6 +4,8 @@ import android.net.Uri;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import com.fsck.k9.Account;
+
 /**
  * Container class for information about an attachment.
  * <p>
@@ -66,7 +68,9 @@ public class Attachment implements Parcelable {
      * +     * Valid iff {@link #state} is {@link LoadingState#COMPLETE}.
      * +
      */
-    public float resizeFactor = 1.0f;
+    public int resizeCircumference = Account.DEFAULT_RESIZE_CIRCUMFERENCE;
+
+    public int resizeQuality = Account.DEFAULT_RESIZE_QUALITY;
 
     /**
      * Stores whether default resized settings need to be overridden.
@@ -138,9 +142,10 @@ public class Attachment implements Parcelable {
                 size, absolutePath);
     }
 
-    public void updateResizeInfo(float resizeFactor, boolean overrideDefault) {
-        this.resizeFactor = resizeFactor;
+    public void updateResizeInfo(int resizeCircumference, int resizeQuality, boolean overrideDefault) {
+        this.resizeCircumference = resizeCircumference;
         this.overrideDefault = overrideDefault;
+        this.resizeQuality = resizeQuality;
     }
 
     // === Parcelable ===
