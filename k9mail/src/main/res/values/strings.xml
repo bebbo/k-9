@@ -731,6 +731,14 @@ Please submit bug reports, contribute new features and ask questions at
 
     <string name="account_settings_always_bcc_label">Bcc all messages to</string>
 
+    <string name="account_settings_resize_image_settings_label">Image Resize Settings</string>
+    <string name="account_settings_resize_image_enabled">Automatically resize image attachments</string>
+    <string name="account_settings_resize_image_enabled_summary">Automatically resize all image attachments while sending an email</string>
+    <string name="account_settings_resize_image_circumference">Circumference / 2</string>
+    <string name="account_settings_resize_image_circumference_label">The images are reduced in such a way that width plus height correspond to this value, smaller images are not enlarged</string>
+    <string name="account_settings_resize_image_quality">Quality</string>
+    <string name="account_settings_resize_image_quality_label">A value between 10 and 100 that determines the quality for the JPEG processing</string>
+
     <string name="manage_identities_edit_action">Edit</string>
     <string name="manage_identities_move_up_action">Move up</string>
     <string name="manage_identities_move_down_action">Move down</string>

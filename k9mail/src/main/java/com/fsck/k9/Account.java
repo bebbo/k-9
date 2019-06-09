@@ -107,6 +107,10 @@ public class Account implements BaseAccount, StoreConfig {
     public static final boolean DEFAULT_STRIP_SIGNATURE = true;
     public static final int DEFAULT_REMOTE_SEARCH_NUM_RESULTS = 25;
 
+    public static final boolean DEFAULT_RESIZE_IMAGE_ENABLED = false;
+    public static final int DEFAULT_RESIZE_IMAGE_CIRCUMFERENCE = 2404;
+    public static final int DEFAULT_RESIZE_IMAGE_QUALITY = 90;
+
     public static final String ACCOUNT_DESCRIPTION_KEY = "description";
     public static final String STORE_URI_KEY = "storeUri";
     public static final String TRANSPORT_URI_KEY = "transportUri";
@@ -227,6 +231,10 @@ public class Account implements BaseAccount, StoreConfig {
     private boolean remoteSearchFullText;
     private int remoteSearchNumResults;
 
+    private boolean resizeImageEnabled;
+    private int resizeImageCircumference;
+    private int resizeImageQuality;
+
     private ColorChip unreadColorChip;
     private ColorChip readColorChip;
 
@@ -320,6 +328,11 @@ public class Account implements BaseAccount, StoreConfig {
         remoteSearchFullText = false;
         remoteSearchNumResults = DEFAULT_REMOTE_SEARCH_NUM_RESULTS;
         isEnabled = true;
+
+        resizeImageEnabled = DEFAULT_RESIZE_IMAGE_ENABLED;
+        resizeImageCircumference = DEFAULT_RESIZE_IMAGE_CIRCUMFERENCE;
+        resizeImageQuality = DEFAULT_RESIZE_IMAGE_QUALITY;
+
         markMessageAsReadOnView = true;
         alwaysShowCcBcc = false;
 
@@ -469,6 +482,10 @@ public class Account implements BaseAccount, StoreConfig {
         remoteSearchFullText = storage.getBoolean(accountUuid + ".remoteSearchFullText", false);
         remoteSearchNumResults = storage.getInt(accountUuid + ".remoteSearchNumResults", DEFAULT_REMOTE_SEARCH_NUM_RESULTS);
 
+        resizeImageEnabled = storage.getBoolean(accountUuid + ".resizeImageEnabled", DEFAULT_RESIZE_IMAGE_ENABLED);
+        resizeImageCircumference = storage.getInt(accountUuid + ".resizeImageCircumference", DEFAULT_RESIZE_IMAGE_CIRCUMFERENCE);
+        resizeImageQuality = storage.getInt(accountUuid + ".resizeImageQuality", DEFAULT_RESIZE_IMAGE_QUALITY);
+
         isEnabled = storage.getBoolean(accountUuid + ".enabled", true);
         markMessageAsReadOnView = storage.getBoolean(accountUuid + ".markMessageAsReadOnView", true);
         alwaysShowCcBcc = storage.getBoolean(accountUuid + ".alwaysShowCcBcc", false);
@@ -565,6 +582,11 @@ public class Account implements BaseAccount, StoreConfig {
         editor.remove(accountUuid + ".allowRemoteSearch");
         editor.remove(accountUuid + ".remoteSearchFullText");
         editor.remove(accountUuid + ".remoteSearchNumResults");
+
+        editor.remove(accountUuid + ".resizeImageEnabled");
+        editor.remove(accountUuid + ".resizeImageCircumference");
+        editor.remove(accountUuid + ".resizeImageQuality");
+
         editor.remove(accountUuid + ".defaultQuotedTextShown");
         editor.remove(accountUuid + ".displayCount");
         editor.remove(accountUuid + ".inboxFolderName");
@@ -734,10 +756,14 @@ public class Account implements BaseAccount, StoreConfig {
         editor.putBoolean(accountUuid + ".allowRemoteSearch", allowRemoteSearch);
         editor.putBoolean(accountUuid + ".remoteSearchFullText", remoteSearchFullText);
         editor.putInt(accountUuid + ".remoteSearchNumResults", remoteSearchNumResults);
+
+        editor.putBoolean(accountUuid + ".resizeImageEnabled", isResizeImageEnabled);
+        editor.putInt(accountUuid + ".resizeImageCircumference", resizeImageCircumference);
+        editor.putInt(accountUuid + ".resizeImageQuality", resizeImageQuality);
+
         editor.putBoolean(accountUuid + ".enabled", isEnabled);
         editor.putBoolean(accountUuid + ".markMessageAsReadOnView", markMessageAsReadOnView);
         editor.putBoolean(accountUuid + ".alwaysShowCcBcc", alwaysShowCcBcc);
-
         editor.putBoolean(accountUuid + ".vibrate", notificationSetting.isVibrateEnabled());
         editor.putInt(accountUuid + ".vibratePattern", notificationSetting.getVibratePattern());
         editor.putInt(accountUuid + ".vibrateTimes", notificationSetting.getVibrateTimes());
@@ -1667,6 +1693,24 @@ public class Account implements BaseAccount, StoreConfig {
 
     public void setRemoteSearchNumResults(int val) {
         remoteSearchNumResults = (val >= 0 ? val : 0);
+    }
+
+    public boolean isResizeImageEnabled() { return resizeImageEnabled; }
+
+    public void setResizeImageEnabled(boolean resizeImageEnabled) {
+        this.resizeImageEnabled = resizeImageEnabled;
+    }
+
+    public int getResizeImageCircumference() { return resizeImageCircumference; }
+
+    public void setResizeImageCircumference(int resizeImageCircumference) {
+        this.resizeImageCircumference = resizeImageCircumference;
+    }
+
+    public int getResizeImageQuality() { return resizeImageQuality; }
+
+    public void setResizeImageQuality(int resizeImageQuality) {
+        this.resizeImageQuality = resizeImageQuality;
     }
 
     public String getInboxFolderName() {
