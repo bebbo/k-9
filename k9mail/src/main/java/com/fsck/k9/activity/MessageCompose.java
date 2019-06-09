@@ -674,8 +674,8 @@ public class MessageCompose extends K9Activity implements OnClickListener,
             recipientPresenter.builderSetProperties(builder);
         }
 
+        List<Attachment> attachments = attachmentPresenter.createAttachmentList();
         if (account.isResizeImageEnabled()) {
-            List<Attachment> attachments = attachmentPresenter.createAttachmentList();
             for (Attachment attachment : attachments) {
                 attachment.resizeImagesEnabled = true;
             }
@@ -690,7 +690,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
                 .setIdentity(identity)
                 .setMessageFormat(currentMessageFormat)
                 .setText(messageContentView.getCharacters())
-                .setAttachments(attachmentPresenter.createAttachmentList())
+                .setAttachments(attachments)
                 .setSignature(signatureView.getCharacters())
                 .setSignatureBeforeQuotedText(account.isSignatureBeforeQuotedText())
                 .setIdentityChanged(identityChanged)

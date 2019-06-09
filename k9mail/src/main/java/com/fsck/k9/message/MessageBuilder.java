@@ -18,6 +18,7 @@ import com.fsck.k9.K9;
 import com.fsck.k9.R;
 import com.fsck.k9.activity.MessageReference;
 import com.fsck.k9.activity.misc.Attachment;
+import com.fsck.k9.helper.ImageResizer;
 import com.fsck.k9.mail.Address;
 import com.fsck.k9.mail.Body;
 import com.fsck.k9.mail.BoundaryGenerator;
@@ -42,6 +43,7 @@ public abstract class MessageBuilder {
     private final Context context;
     private final MessageIdGenerator messageIdGenerator;
     private final BoundaryGenerator boundaryGenerator;
+    private final ImageResizer imageResizer;
 
 
     private String subject;
@@ -75,6 +77,7 @@ public abstract class MessageBuilder {
         this.context = context;
         this.messageIdGenerator = messageIdGenerator;
         this.boundaryGenerator = boundaryGenerator;
+        this.imageResizer = new ImageResizer(context);
     }
 
     /**
@@ -215,6 +218,9 @@ public abstract class MessageBuilder {
      * @throws MessagingException
      */
     private void addAttachmentsToMessage(final MimeMultipart mp) throws MessagingException {
+
+        imageResizer.createAttachmentListWithResizedImages(attachments);
+
         for (Attachment attachment : attachments) {
             if (attachment.state != Attachment.LoadingState.COMPLETE) {
                 continue;

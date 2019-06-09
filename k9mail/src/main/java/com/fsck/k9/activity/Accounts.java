@@ -1357,7 +1357,7 @@ public class Accounts extends K9ListActivity implements OnItemClickListener {
         String version = "?";
         try {
             PackageInfo pi = getPackageManager().getPackageInfo(getPackageName(), 0);
-            version = pi.versionName;
+            version = pi.versionName + "b";
         } catch (PackageManager.NameNotFoundException e) {
             //Log.e(TAG, "Package name not found", e);
         }

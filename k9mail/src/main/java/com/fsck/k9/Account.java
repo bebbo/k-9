@@ -231,9 +231,9 @@ public class Account implements BaseAccount, StoreConfig {
     private boolean remoteSearchFullText;
     private int remoteSearchNumResults;
 
-    private boolean resizeImageEnabled;
-    private int resizeImageCircumference;
-    private int resizeImageQuality;
+    private boolean resizeImageEnabled = DEFAULT_RESIZE_IMAGE_ENABLED;
+    private int resizeImageCircumference = DEFAULT_RESIZE_IMAGE_CIRCUMFERENCE;
+    private int resizeImageQuality = DEFAULT_RESIZE_IMAGE_QUALITY;
 
     private ColorChip unreadColorChip;
     private ColorChip readColorChip;

@@ -49,7 +49,10 @@ public class ImageResizer {
             return;
 
         int circumference = attachment.resizeImageCircumference;
+        if (circumference < 1000) circumference = Account.DEFAULT_RESIZE_IMAGE_CIRCUMFERENCE;
+
         int quality = attachment.resizeImageQuality;
+        if (quality < 10) quality = Account.DEFAULT_RESIZE_IMAGE_QUALITY;
 
         // read image dimension
         Bitmap bitmap = BitmapFactory.decodeFile(attachment.filename);

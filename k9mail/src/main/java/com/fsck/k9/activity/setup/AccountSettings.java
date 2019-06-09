@@ -123,6 +123,11 @@ public class AccountSettings extends K9PreferenceActivity {
     private static final String PREFERENCE_REMOTE_SEARCH_NUM_RESULTS = "account_remote_search_num_results";
     private static final String PREFERENCE_REMOTE_SEARCH_FULL_TEXT = "account_remote_search_full_text";
 
+
+    private static final String PREFERENCE_RESIZE_IMAGE_ENABLED = "resize_image_enabled";
+    private static final String PREFERENCE_RESIZE_IMAGE_CIRCUMFERENCE = "resize_image_circumference";
+    private static final String PREFERENCE_RESIZE_IMAGE_QUALITY = "resize_image_quality";
+
     private static final String PREFERENCE_LOCAL_STORAGE_PROVIDER = "local_storage_provider";
     private static final String PREFERENCE_CATEGORY_FOLDERS = "folders";
     private static final String PREFERENCE_ARCHIVE_FOLDER = "archive_folder";
@@ -190,6 +195,10 @@ public class AccountSettings extends K9PreferenceActivity {
     private PreferenceScreen searchScreen;
     private CheckBoxPreference cloudSearchEnabled;
     private ListPreference remoteSearchNumResults;
+
+    private CheckBoxPreference resizeImageEnabled;
+    private EditTextPreference resizeImageCircumference;
+    private EditTextPreference resizeImageQuality;
 
     /*
      * Temporarily removed because search results aren't displayed to the user.
@@ -524,6 +533,37 @@ public class AccountSettings extends K9PreferenceActivity {
             }
         );
         //mRemoteSearchFullText = (CheckBoxPreference) findPreference(PREFERENCE_REMOTE_SEARCH_FULL_TEXT);
+
+        resizeImageEnabled = (CheckBoxPreference) findPreference(PREFERENCE_RESIZE_IMAGE_ENABLED);
+        resizeImageEnabled.setChecked(account.isResizeImageEnabled());
+        resizeImageEnabled.setOnPreferenceChangeListener(
+                new OnPreferenceChangeListener() {
+                    public boolean onPreferenceChange(Preference pref, Object newVal) {
+                        account.setResizeImageEnabled((Boolean)newVal);
+                        return true;
+                    }
+                }
+        );
+        resizeImageCircumference = (EditTextPreference) findPreference(PREFERENCE_RESIZE_IMAGE_CIRCUMFERENCE);
+        resizeImageCircumference.setText(Integer.toString(account.getResizeImageCircumference()));
+        resizeImageCircumference.setOnPreferenceChangeListener(
+                new OnPreferenceChangeListener() {
+                    public boolean onPreferenceChange(Preference pref, Object newVal) {
+                        account.setResizeImageCircumference(Integer.parseInt((String)newVal));
+                        return true;
+                    }
+                }
+        );
+        resizeImageQuality = (EditTextPreference) findPreference(PREFERENCE_RESIZE_IMAGE_QUALITY);
+        resizeImageQuality.setText(Integer.toString(account.getResizeImageQuality()));
+        resizeImageQuality.setOnPreferenceChangeListener(
+                new OnPreferenceChangeListener() {
+                    public boolean onPreferenceChange(Preference pref, Object newVal) {
+                        account.setResizeImageQuality(Integer.parseInt((String)newVal));
+                        return true;
+                    }
+                }
+        );
 
         pushPollOnConnect = (CheckBoxPreference) findPreference(PREFERENCE_PUSH_POLL_ON_CONNECT);
         idleRefreshPeriod = (ListPreference) findPreference(PREFERENCE_IDLE_REFRESH_PERIOD);
