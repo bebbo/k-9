@@ -6,7 +6,7 @@ import android.graphics.BitmapFactory;
 import android.net.Uri;
 
 import com.fsck.k9.Account;
-import com.fsck.k9.message.Attachment;
+import com.fsck.k9.activity.misc.Attachment;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
@@ -33,7 +33,7 @@ public class ImageResizer {
      */
     public void createAttachmentListWithResizedImages(List<? extends Attachment> attachments) {
         for (Attachment attachment : attachments) {
-            if (attachment.getResizeImagesEnabled() && isImage(context, attachment.getUri())) {
+            if (attachment.resizeImagesEnabled && isImage(context, attachment.uri)) {
                 resizeImageAttachment(attachment);
             }
         }
@@ -45,14 +45,14 @@ public class ImageResizer {
      * @param attachment the attachment.
      */
     private void resizeImageAttachment(Attachment attachment) {
-        if (attachment.getFileName() == null)
+        if (attachment.filename == null)
             return;
 
-        int circumference = attachment.getResizeImageCircumference();
-        int quality = attachment.getResizeImageQuality();
+        int circumference = attachment.resizeImageCircumference;
+        int quality = attachment.resizeImageQuality;
 
         // read image dimension
-        Bitmap bitmap = BitmapFactory.decodeFile(attachment.getFileName());
+        Bitmap bitmap = BitmapFactory.decodeFile(attachment.filename);
 
         // calculate new dimension
         int newWidth;
@@ -76,7 +76,7 @@ public class ImageResizer {
         // resize the image
         Bitmap resized = Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true);
         FileOutputStream out = null;
-        File attachmentFile = new File(attachment.getFileName());
+        File attachmentFile = new File(attachment.filename);
         File tempFile = new File(attachmentFile.getParentFile(), attachmentFile.getName() + "." + System.currentTimeMillis());
         try {
             // and apply the JPEG setting.
@@ -84,13 +84,13 @@ public class ImageResizer {
             resized.compress(Bitmap.CompressFormat.JPEG, quality, out);
 
             // successful written -> update the attachment
-            attachment.setFileName(tempFile.getAbsolutePath());
-            attachment.setSize(tempFile.length());
+            attachment.filename = tempFile.getAbsolutePath();
+            attachment.size = tempFile.length();
 
             // erase the old attachment file
             tempFile = attachmentFile;
         } catch (IOException ioe) {
-            Timber.i("image resizing failed for " + attachment.getUri() + " circumference=" + circumference + ", quality=" + quality);
+            Timber.i("image resizing failed for " + attachment.uri + " circumference=" + circumference + ", quality=" + quality);
         } finally {
             IOUtils.closeQuietly(out);
             FileUtils.deleteQuietly(tempFile);

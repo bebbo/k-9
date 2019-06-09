@@ -51,14 +51,30 @@ public class Attachment implements Parcelable {
      *
      * Valid iff {@link #state} is {@link LoadingState#METADATA} or {@link LoadingState#COMPLETE}.
      */
-    public final Long size;
+    public Long size;
 
     /**
      * The name of the temporary file containing the local copy of the attachment.
      *
      * Valid iff {@link #state} is {@link LoadingState#COMPLETE}.
      */
-    public final String filename;
+    public String filename;
+
+    /**
+     * The resize values: resizeImageCircumference and resizeImageQuality
+     *
+     * Valid iff {@link #state} is {@link LoadingState#COMPLETE}.
+     */
+    public int resizeImageCircumference;
+
+    public int resizeImageQuality;
+
+    /**
+     * Stores whether image resizing is enabled for this attachment.
+     * <p>
+     * Valid iff {@link #state} is {@link LoadingState#COMPLETE}.
+     */
+    public boolean resizeImagesEnabled;
 
     public enum LoadingState {
         URI_ONLY,
@@ -159,4 +175,10 @@ public class Attachment implements Parcelable {
             return new Attachment[size];
         }
     };
+
+    public void updateResizeInfo(int resizeCircumference, int resizeQuality, boolean resizeImagesEnabled) {
+        this.resizeImageCircumference = resizeCircumference;
+        this.resizeImageQuality = resizeQuality;
+        this.resizeImagesEnabled = resizeImagesEnabled;
+    }
 }

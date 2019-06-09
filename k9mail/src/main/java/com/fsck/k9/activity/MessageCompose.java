@@ -74,6 +74,7 @@ import com.fsck.k9.fragment.ProgressDialogFragment;
 import com.fsck.k9.fragment.ProgressDialogFragment.CancelListener;
 import com.fsck.k9.helper.Contacts;
 import com.fsck.k9.helper.IdentityHelper;
+import com.fsck.k9.helper.ImageResizer;
 import com.fsck.k9.helper.MailTo;
 import com.fsck.k9.helper.ReplyToParser;
 import com.fsck.k9.helper.SimpleTextWatcher;
@@ -673,6 +674,13 @@ public class MessageCompose extends K9Activity implements OnClickListener,
             recipientPresenter.builderSetProperties(builder);
         }
 
+        if (account.isResizeImageEnabled()) {
+            List<Attachment> attachments = attachmentPresenter.createAttachmentList();
+            for (Attachment attachment : attachments) {
+                attachment.resizeImagesEnabled = true;
+            }
+        }
+
         builder.setSubject(Utility.stripNewLines(subjectView.getText().toString()))
                 .setSentDate(new Date())
                 .setHideTimeZone(K9.hideTimeZone())
@@ -1173,6 +1181,43 @@ public class MessageCompose extends K9Activity implements OnClickListener,
             }
         }
         return super.onCreateDialog(id);
+    }
+
+    public void showResizeFactorDialog(Attachment attachmentIn) {
+
+        final Attachment attachment = attachmentPresenter.getAttachment(attachmentIn.uri);
+
+        View view = getLayoutInflater().inflate(R.layout.resize_image, null);
+
+        final EditText circumferenceText = view.findViewById(R.id.resize_image_attachment_circumference);
+        final EditText qualityText = view.findViewById(R.id.resize_image_attachment_quality);
+
+        if (attachment.resizeImageCircumference > 0) {
+            circumferenceText.setText(Integer.toString(attachment.resizeImageCircumference));
+            qualityText.setText(Integer.toString(attachment.resizeImageQuality));
+        } else {
+            circumferenceText.setText(Integer.toString(account.getResizeImageCircumference()));
+            qualityText.setText(Integer.toString(account.getResizeImageQuality()));
+        }
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this)
+                .setTitle(getString(R.string.account_settings_resize_image_settings_label))
+                .setView(view)
+                .setPositiveButton(getString(R.string.ok), new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int whichButton) {
+                        attachment.updateResizeInfo(ImageResizer.convertResizeImageCircumference(circumferenceText.getText().toString()),
+                                ImageResizer.convertResizeImageQuality(qualityText.getText().toString()), true);
+
+                        dialog.dismiss();
+                    }
+                })
+                .setNegativeButton(getString(R.string.cancel_action), new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int whichButton) {
+                        attachment.updateResizeInfo(account.getResizeImageCircumference(), account.getResizeImageQuality(), account.isResizeImageEnabled());
+                        dialog.dismiss();
+                    }
+                });
+        builder.create().show();
     }
 
     public void saveDraftEventually() {
@@ -1741,6 +1786,17 @@ public class MessageCompose extends K9Activity implements OnClickListener,
                 @Override
                 public void onClick(View view) {
                     attachmentPresenter.onClickRemoveAttachment(attachment.uri);
+                }
+            });
+
+            View resizeButton = view.findViewById(R.id.resize_image);
+            if (!ImageResizer.isImage(getApplicationContext(), attachment.uri)) {
+                resizeButton.setVisibility(View.GONE);
+            }
+            resizeButton.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    showResizeFactorDialog(attachment);
                 }
             });
 

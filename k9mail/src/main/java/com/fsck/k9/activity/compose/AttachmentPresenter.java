@@ -112,11 +112,7 @@ public class AttachmentPresenter {
     }
 
     public ArrayList<Attachment> createAttachmentList() {
-        ArrayList<Attachment> result = new ArrayList<>();
-        for (Attachment attachment : attachments.values()) {
-            result.add(attachment);
-        }
-        return result;
+        return new ArrayList<>(attachments.values());
     }
 
     public void onClickAddAttachment(RecipientPresenter recipientPresenter) {
@@ -165,6 +161,10 @@ public class AttachmentPresenter {
         Attachment attachment = Attachment.createAttachment(uri, loaderId, contentType, allowMessageType);
 
         addAttachmentAndStartLoader(attachment);
+    }
+
+    public Attachment getAttachment(Uri uri) {
+        return attachments.get(uri);
     }
 
     public boolean loadNonInlineAttachments(MessageViewInfo messageViewInfo) {

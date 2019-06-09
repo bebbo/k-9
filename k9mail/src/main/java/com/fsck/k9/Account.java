@@ -757,7 +757,7 @@ public class Account implements BaseAccount, StoreConfig {
         editor.putBoolean(accountUuid + ".remoteSearchFullText", remoteSearchFullText);
         editor.putInt(accountUuid + ".remoteSearchNumResults", remoteSearchNumResults);
 
-        editor.putBoolean(accountUuid + ".resizeImageEnabled", isResizeImageEnabled);
+        editor.putBoolean(accountUuid + ".resizeImageEnabled", resizeImageEnabled);
         editor.putInt(accountUuid + ".resizeImageCircumference", resizeImageCircumference);
         editor.putInt(accountUuid + ".resizeImageQuality", resizeImageQuality);
 
